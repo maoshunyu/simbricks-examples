@@ -35,6 +35,7 @@
 
 /** Use this macro to safely access a register at a specific offset */
 #define ACCESS_REG(r) (*(volatile uint64_t *) ((uintptr_t) regs + r))
+#define ACCESS_REG_BYTE(r) (*(volatile uint8_t *) ((uintptr_t) regs + r))
 
 static void *regs;
 
@@ -87,7 +88,7 @@ int accelerator_init(bool dma) {
 }
 
 int accelerator_matrix_size(void) {
-  return 42;
+  return ACCESS_REG(REG_SIZE);
 }
 
 
@@ -97,7 +98,36 @@ void matmult_accel(const uint8_t * restrict A, const uint8_t * restrict B,
     fprintf(stderr, "matmult_accel: matrix smaller than supported\n");
     abort();
   }
+  uint64_t off_a = ACCESS_REG(REG_OFF_INA);
+  uint64_t off_b = ACCESS_REG(REG_OFF_INB);
+  uint64_t off_out = ACCESS_REG(REG_OFF_OUT);
+  
+  memcpy(dma_mem, A, n * n);
+  ACCESS_REG(REG_DMA_ADDR) = dma_mem_phys;
+  ACCESS_REG(REG_DMA_LEN) = n * n;
+  ACCESS_REG(REG_DMA_OFF) = off_a;
+  ACCESS_REG_BYTE(REG_DMA_CTRL) = REG_DMA_CTRL_RUN;
+  while (ACCESS_REG_BYTE(REG_DMA_CTRL) & REG_DMA_CTRL_RUN)
+    ;
 
-  // FILL ME IN
-  abort();
+  memcpy(dma_mem, B, n * n);
+  ACCESS_REG(REG_DMA_ADDR) = dma_mem_phys;
+  ACCESS_REG(REG_DMA_LEN) = n * n;
+  ACCESS_REG(REG_DMA_OFF) = off_b;
+  ACCESS_REG_BYTE(REG_DMA_CTRL) = REG_DMA_CTRL_RUN;
+  while (ACCESS_REG_BYTE(REG_DMA_CTRL) & REG_DMA_CTRL_RUN)
+    ;
+
+  ACCESS_REG_BYTE(REG_CTRL) = 1;
+  while(ACCESS_REG_BYTE(REG_CTRL) != 0)
+    ;
+
+  ACCESS_REG(REG_DMA_ADDR) = dma_mem_phys_w;
+  ACCESS_REG(REG_DMA_LEN) = n * n;
+  ACCESS_REG(REG_DMA_OFF) = off_out;
+  ACCESS_REG_BYTE(REG_DMA_CTRL) = REG_DMA_CTRL_RUN | REG_DMA_CTRL_W;
+  while (ACCESS_REG_BYTE(REG_DMA_CTRL) & REG_DMA_CTRL_RUN)
+    ;
+
+  memcpy(out, dma_mem_w, n * n);
 }

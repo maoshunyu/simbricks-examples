@@ -17,14 +17,14 @@ for lat in [10000000000, 1000000000, 1000000, 1000]:
   e.checkpoint = True
 
   server_config = HwAccelNode()
-  server_config.app = MatMulApp(512, 10)
+  server_config.app = MatMulApp(128, 1)
 
   server = sim.Gem5Host(server_config)
   server.name = 'host'
   server.cpu_type = 'TimingSimpleCPU'
   server.cpu_freq = '1GHz'
 
-  hwaccel = HWAccelSim(lat, 512)
+  hwaccel = HWAccelSim(lat, 128)
   hwaccel.name = 'accel'
   hwaccel.sync = True
   server.add_pcidev(hwaccel)

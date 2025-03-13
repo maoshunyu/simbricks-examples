@@ -38,7 +38,7 @@ int accelerator_init(void);
  * called after a successful call to accelerator_init.
  */
 int accelerator_matrix_size(void);
-
+void set_accelerator_matrix_size(uint64_t size);
 /**
  * Run a square matrix multiplication through the accelerator. Must only be
  * called after a successful call to accelerator_init.

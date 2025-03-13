@@ -11,7 +11,7 @@ experiments = []
 e = exp.Experiment(f'test4')
 
 server_config = HwAccelNode()
-server_config.app = MatMulApp(512, dma=True)
+server_config.app = MatMulApp(128, dma=True)
 server_config.nockp = True
 
 server = sim.Gem5Host(server_config)

@@ -16,7 +16,7 @@ for lat in [10000000000, 1000000000, 1000000, 1000]:
   e.checkpoint = True
 
   server_config = HwAccelNode()
-  server_config.app = MatMulApp(512, 10, dma=True)
+  server_config.app = MatMulApp(128, 2, dma=True)
 
   server = sim.Gem5Host(server_config)
   server.name = 'host'

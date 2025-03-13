@@ -52,6 +52,7 @@ class HWAccelSim(sim.PCIDevSim):
         super().__init__()
         self.op_latency = op_latency
         self.matrix_size = matrix_size
+#        self.pci_latency = 0 # just for test
 
     def run_cmd(self, env):
         cmd = '%s%s %d %d %s %s' % \

@@ -25,6 +25,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <vfio-pci.h>
 
@@ -33,6 +34,7 @@
 
 /** Use this macro to safely access a register at a specific offset */
 #define ACCESS_REG(r) (*(volatile uint64_t *) ((uintptr_t) regs + r))
+#define ACCESS_REG_BYTE(r) (*(volatile uint64_t *) ((uintptr_t) regs + r))
 
 static void *regs;
 
@@ -61,7 +63,21 @@ int accelerator_matrix_size(void) {
   return ACCESS_REG(REG_SIZE);
 }
 
+void set_accelerator_matrix_size(uint64_t size) {
+  // YOU CAN CHANGE THIS, THIS IS JUST AN EXAMPLE
+  ACCESS_REG(REG_SIZE) = size;
+  printf("Set matrix size to %lu\n", size);
+}
+
 void matmult_accel(const uint8_t * restrict A, const uint8_t * restrict B,
                    uint8_t * restrict out, size_t n) {
-  // FILL ME IN
+  uint64_t off_a = ACCESS_REG(REG_OFF_INA);
+  uint64_t off_b = ACCESS_REG(REG_OFF_INB);
+  uint64_t off_out = ACCESS_REG(REG_OFF_OUT);
+  memcpy((void *) ((uintptr_t) regs + off_a), A, n * n);
+  memcpy((void *) ((uintptr_t) regs + off_b), B, n * n);
+  ACCESS_REG_BYTE(REG_CTRL) = 1;
+  while(ACCESS_REG_BYTE(REG_CTRL) != 0)
+    ;
+  memcpy(out, (void *) ((uintptr_t) regs + off_out), n * n);
 }
