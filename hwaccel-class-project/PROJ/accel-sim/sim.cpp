@@ -56,8 +56,6 @@ uint64_t OP_DMA;
 uint64_t OP_DONE;
 
 
-// uncomment to enable debug prints
-#define DEBUG
 
 uint64_t OFF_IN = 0x1000; 
 uint64_t OFF_OUT = 0x2000;
@@ -107,10 +105,10 @@ int InitState(void) {
 
 void MMIORead(volatile struct SimbricksProtoPcieH2DRead *read)
 {
-#ifdef DEBUG
-  fprintf(stderr, "MMIO Read: BAR %d offset 0x%lx len %d\n", read->bar,
-    read->offset, read->len);
-#endif
+// #ifdef DEBUG
+//   fprintf(stderr, "MMIO Read: BAR %d offset 0x%lx len %d\n", read->bar,
+//     read->offset, read->len);
+// #endif
 
   // praepare read completion
   volatile union SimbricksProtoPcieD2H *msg = AllocPcieOut();
@@ -185,7 +183,9 @@ void MMIOWrite(volatile struct SimbricksProtoPcieH2DWrite *write)
       work->type = FIND_LINE;
       work->expected_time = main_time + OP_START;
       AddWork(work);
-
+#ifdef DEBUG
+      fprintf(stderr, "MMIO Write: ctrl %d ex_time=%ld main=%ld\n", ctrl,expected_time, main_time);
+#endif
     }else if(write->offset >= REG_DMA_LEN && write->offset < (REG_DMA_LEN + 32 * 8)){
       int i = (write->offset - REG_DMA_LEN) / 32;
       int j = (write->offset - REG_DMA_LEN) % 32;
@@ -194,7 +194,7 @@ void MMIOWrite(volatile struct SimbricksProtoPcieH2DWrite *write)
         case 8: memcpy(dma_addr_in + i, (const void *) write->data, write->len); break;
         case 16: memcpy(dma_addr_out + i, (const void *) write->data, write->len); break;
         case 24: memcpy(dma_ctrl_in + i, (const void *) write->data, write->len); 
-        IssueDMARead(mem[i], dma_addr_in[i], dma_len[i], READ_OPAQUE(i));break;
+        IssueDMARead(mem[i], dma_addr_in[i], dma_len[i], READ_OPAQUE(i));break; // TODO: 搬走
         default:
           fprintf(stderr, "MMIO Write: warning invalid MMIO write 0x%lx\n", write->offset);
       }
@@ -232,6 +232,9 @@ void ProcessWork(work_item_t *work){
   work_item_t *new_work;
   switch(work->type){
     case FIND_LINE:{
+      #ifdef DEBUG
+      fprintf(stderr, "FIND_LINE\n");
+      #endif
     ready_mem = 0;
     for (int i = 0; i < 8; i++) {
       if (states[i] == 0xFF && !(issued & (1 << i))) { // 8个bit为1意味全部写入完成
@@ -258,6 +261,9 @@ void ProcessWork(work_item_t *work){
     case DISPATCH:{
     uint8_t process_mem = (uint8_t)work->data;
     uint64_t dispatched_cu = 0;
+    #ifdef DEBUG
+    fprintf(stderr, "DISPATCH: process_mem = %b\n", process_mem);
+    #endif
     for(uint64_t i = 0; i < CU_NUM;i++){
       if(process_mem == 0){// 全部任务分配完了
         break;
@@ -298,6 +304,9 @@ void ProcessWork(work_item_t *work){
   }
     case GET_RESULT:{
     uint64_t result_cu = work->data;
+    #ifdef DEBUG
+    fprintf(stderr, "GET_RESULT: result_cu = %b\n", result_cu);
+    #endif
     for(uint64_t i = 0; i < CU_NUM; i++){
       if(result_cu == 0){
         break;
@@ -322,24 +331,26 @@ void ProcessWork(work_item_t *work){
   }
     case DMA:{
     uint64_t finished_cu = work->data;
+    #ifdef DEBUG
+    fprintf(stderr, "DMA: finished_cu = %b\n", finished_cu);
+    #endif
     for(uint64_t i = 0; i < CU_NUM; i++){
       if(finished_cu & (1 << i)){ //DMA到卡i
         for(int j = 0; j < 8; j++){
           result_t[j] = result[i][0];
         }
-        IssueDMAWrite(dma_addr_out[result[i][8]], result_t, 8, WRITE_OPAQUE(result[i][8]));
-        finished_nums++; // 完成的任务数目
+        IssueDMAWrite(dma_addr_out[result[i][8]], result_t, 8, WRITE_OPAQUE(result[i][8])); // TODO
+        #ifdef DEBUG
+        fprintf(stderr, "DMA: IssueDMAWrite %d\n", result_t[0]);
+        #endif
       }
-    }
-    if(finished_nums == 8){
-      new_work = new work_item_t;
-      new_work->type = DONE;
-      new_work->expected_time = main_time + OP_DONE;
-      AddWork(new_work);
     }
     break;
   }
     case DONE:
+    #ifdef DEBUG
+    fprintf(stderr, "DONE\n");
+    #endif
     ctrl = 0;
     break;
 
@@ -348,18 +359,47 @@ void ProcessWork(work_item_t *work){
   delete work;
 }
 
-uint64_t AddWork(work_item_t *work){
-  work_queue.push_back(work);
-  return work->expected_time;
+void AddWork(work_item_t *work){
+  // Insert work into the queue in the order of expected_time
+  if (work_queue.empty()) {
+    work_queue.push_back(work);
+  } else {
+    std::deque<work_item_t*>::iterator it = work_queue.begin();
+    while (it != work_queue.end() && (*it)->expected_time < work->expected_time) {
+      it++;
+    }
+    work_queue.insert(it, work);
+  }
+  expected_time = work_queue.front()->expected_time;
+  #ifdef DEBUG
+  fprintf(stderr, "AddWork: type = %d   work->expected_time = %ld  expected_time = %ld\n",work->type, work->expected_time,expected_time);
+  #endif
 }
+
 
 void DMACompleteEvent(uint64_t opaque) {
   if(opaque >= 0x1000 && opaque < 0x2000){
-    dma_ctrl_in[opaque - 0x1000] = 0;
+    #ifdef DEBUG
+    fprintf(stderr, "DMACompleteRead %lx\n", opaque);
+    #endif
+    dma_ctrl_in[opaque - 0x1000] = 0; // 读取数据完毕
     for(int i = 0; i < 8; i++){
       states[i] |= 1 << (opaque - 0x1000);
     }
   }else if(opaque >= 0x2000 && opaque < 0x3000){
     dma_ctrl_out[opaque - 0x2000] = 1; //  TODO：归零
+    finished_nums++; // 完成的任务数目
+    if(finished_nums == 8){
+      work_item_t* new_work = new work_item_t;
+      new_work->type = DONE;
+      new_work->expected_time = main_time + OP_DONE;
+      AddWork(new_work);
+    }
+    #ifdef DEBUG
+    fprintf(stderr, "DMACompleteWrite %lx time = %ld\n", opaque,main_time);
+    fprintf(stderr, "finished_nums = %d\n", finished_nums);
+    #endif
   }
+  if(!work_queue.empty())
+    expected_time = work_queue.front()->expected_time;
 }

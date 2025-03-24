@@ -29,6 +29,9 @@
 
 #include <simbricks/pcie/proto.h>
 
+// uncomment to enable debug prints
+#define DEBUG
+
 #define READ_OPAQUE(x) (0x1000 + (x))
 #define WRITE_OPAQUE(x) (0x2000 + (x))
 
@@ -122,5 +125,5 @@ void DMACompleteEvent(uint64_t opaque);
 void ProcessWork(work_item_t *work);
 
 
-uint64_t AddWork(work_item_t *work);
+void AddWork(work_item_t *work);
 #endif  // ndef ACCEL_SIM_SIM_H_

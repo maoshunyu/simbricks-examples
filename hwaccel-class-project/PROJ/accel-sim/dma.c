@@ -135,6 +135,10 @@ void IssueDMAWrite(uint64_t dst_addr, const void *src, size_t len,
   op->len = len;
   op->opaque = opaque;
   op->write = true;
+  #ifdef DEBUG
+  fprintf(stderr, "IssueDMAWrite: dst_addr = %lx, src = %p, len = %lu, opaque = %lx\n",
+      dst_addr, src, len, opaque);
+  #endif
   IssueDMA(op);
 }
 
@@ -163,11 +167,27 @@ void DMAEvent(volatile union SimbricksProtoPcieH2D *msg) {
   assert(op->n_pending > 0);
   op->n_pending--;
   if (op->n_pending == 0 && op->issue_offset == op->len) {
+    #ifdef DEBUG
+    fprintf(stderr, "DMAComplete: dst_addr = %lx, src = %p, len = %lu, opaque = %lx\n",
+      op->addr, op->ptr, op->len, op->opaque);
+    #endif
     // Operation is now done, yay!
-    assert(pending_dma_first == op); // rely on operations completing in order
-    pending_dma_first = op->next;
-    if (pending_dma_first == NULL)
-      pending_dma_last = NULL;
+
+    // Not rely on completing in order!!
+    // Remove from pending list
+    struct DMAOp *prev = NULL;
+    for (struct DMAOp* cur = pending_dma_first; cur != op; cur = cur->next) {
+      prev = cur;
+    }
+    if (prev) {
+      prev->next = op->next;
+    } else {
+      pending_dma_first = op->next;
+    }
+    if (pending_dma_last == op) {
+      pending_dma_last = prev;
+    }
+
 
     uint64_t opaque = op->opaque;
     free(op);

@@ -47,7 +47,7 @@ static uintptr_t dma_mem_phys;
 
 static uint8_t *dma_out;
 static uintptr_t dma_out_phys;
-static size_t dma_out_size = 4 * 32;
+static size_t dma_out_size = 8 * 32;
 
 int accelerator_init(bool dma) {
   struct vfio_dev dev;
@@ -91,13 +91,10 @@ int accelerator_init(bool dma) {
   return 0;
 }
 
-
+#include "utils.h"
 
 void accel(const uint8_t * restrict A,
                    uint8_t * restrict out, size_t n) {
-
-  // uint64_t off_in = ACCESS_REG(REG_OFF_IN);
-  // uint64_t off_out = ACCESS_REG(REG_OFF_OUT);
 
   memcpy(dma_mem, A, n);
 
@@ -106,13 +103,17 @@ void accel(const uint8_t * restrict A,
   for(int i = 0;i < 8;i++){
     int off =  i * 32;
     ACCESS_REG(REG_DMA_ADDR_IN + off) = dma_mem_phys;
-    ACCESS_REG(REG_DMA_ADDR_OUT + off) = dma_out_phys;
+    ACCESS_REG(REG_DMA_ADDR_OUT + off) = dma_out_phys + i * 32;// 32Byte
     ACCESS_REG(REG_DMA_LEN + off) = n;
     ACCESS_REG_BYTE(REG_DMA_CTRL_IN + off) = 1;
     while (ACCESS_REG_BYTE(REG_DMA_CTRL_IN + off))
       ;
   }
   /////////////////////
+
+
+  uint64_t total_cycles = 0;
+  uint64_t start = rdtsc();
 
 
   ACCESS_REG_BYTE(REG_CTRL) = 1;
@@ -127,5 +128,16 @@ void accel(const uint8_t * restrict A,
   }
   /////////////////////
 
-  memcpy(out, dma_out_phys, n);
+
+  total_cycles += rdtsc() - start;
+  
+
+  printf("Cycles per operation: %ld\n", total_cycles);
+  memcpy(out, dma_out, n*32);// TODO
+
+
+  // TODO 删掉
+  for(int i=0;i<8;i++){
+    fprintf(stderr, "out[%d] = %d\n", i, *(out + i*32));
+  }
 }

@@ -64,39 +64,17 @@ void test_connection(void)
 
 void test_functionality(size_t n)
 {
-  // uint8_t *A = rand_matrix_alloc(n, n);
-  // uint8_t *B = rand_matrix_alloc(n, n);
-  // uint8_t *out_orig = zero_matrix_alloc(n, n);
-  // uint8_t *out_a = zero_matrix_alloc(n, n);
-
-  // matmult(A, B, out_orig, n);
-  // matmult_accel(A, B, out_a, n);
-
-  // if (!memcmp(out_orig, out_a, n * n))
-  //   printf("STATUS: Success matrices match\n");
-  // else
-  //   printf("STATUS: Failure Matrices do not match\n");
-
   uint8_t *A = malloc(n);
-  uint8_t *out = malloc(n);
+  uint8_t *out = malloc(n*32); // TODO
+  for (size_t i = 0; i < n; i++) {
+    A[i] = i;
+  }
   accel(A,out,n);
 }
 
 void measure(size_t n, size_t iterations)
 {
-  // uint8_t *A = rand_matrix_alloc(n, n);
-  // uint8_t *B = rand_matrix_alloc(n, n);
-  // uint8_t *out = zero_matrix_alloc(n, n);
-
-  // size_t i;
-  // uint64_t total_cycles = 0;
-  // for (i = 0; i < iterations; i++) {
-  //   uint64_t start = rdtsc();
-  //   matmult_accel(A, B, out, n);
-  //   total_cycles += rdtsc() - start;
-  // }
-
-  // printf("Cycles per operation: %ld\n", total_cycles / iterations);
+  
 }
 
 int main(int argc, char *argv[])

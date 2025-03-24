@@ -10,18 +10,22 @@ from hwaccel_common import *
 experiments = []
 
 e = exp.Experiment(f'test0')
+e.checkpoint = True
 
 server_config = HwAccelNode()
-server_config.app = MatMulApp(8)
-server_config.nockp = True
+server_config.app = AccelApp(8)
+# server_config.nockp = True
 
 server = sim.Gem5Host(server_config)
 server.name = 'host'
-server.cpu_type = 'X86KvmCPU'
+server.cpu_type = 'AtomicSimpleCPU'
+server.cpu_freq = '1GHz'
+# server.variant = 'opt'
+# server.extra_main_args = ['--debug-flags=SimBricksPci,DMA']
 
-hwaccel = HWAccelSim(10000, 128, 3 * 128 * 128)
+hwaccel = HWAccelSim()
 hwaccel.name = 'accel'
-hwaccel.sync = False
+hwaccel.sync = True
 server.add_pcidev(hwaccel)
 
 e.add_pcidev(hwaccel)

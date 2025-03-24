@@ -26,7 +26,7 @@ class HwAccelNode(node.NodeConfig):
 
 # Actual application to run. Includes the command to run, but also makes sure
 # the compiled binary gets copied into the disk image of the simulated machine.
-class MatMulApp(node.AppConfig):
+class AccelApp(node.AppConfig):
     def __init__(self, n = None, its = None, dma = True):
         super().__init__()
         self.n = n
@@ -49,11 +49,9 @@ class MatMulApp(node.AppConfig):
 class HWAccelSim(sim.PCIDevSim):
     sync = True
 
-    def __init__(self, op_latency, matrix_size, mem_size):
+    def __init__(self):
         super().__init__()
-        self.op_latency = op_latency
-        self.matrix_size = matrix_size
-        self.mem_size = mem_size
+
 
     def run_cmd(self, env):
         cmd = '%s%s %s %s' % \
