@@ -136,8 +136,8 @@ void IssueDMAWrite(uint64_t dst_addr, const void *src, size_t len,
   op->opaque = opaque;
   op->write = true;
   #ifdef DEBUG
-  fprintf(stderr, "IssueDMAWrite: dst_addr = %lx, src = %p, len = %lu, opaque = %lx\n",
-      dst_addr, src, len, opaque);
+  fprintf(stderr, "IssueDMAWrite: dst_addr = %lx, src = %p, len = %lu, opaque = %lx, time = %ld\n",
+      dst_addr, src, len, opaque, main_time);
   #endif
   IssueDMA(op);
 }

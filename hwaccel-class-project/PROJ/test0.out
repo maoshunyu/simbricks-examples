@@ -1,0 +1,2 @@
+FAILED test0: Could not find "STATUS: Success matrices match" output  (inspect out/test0-1.json)
+TEST test0

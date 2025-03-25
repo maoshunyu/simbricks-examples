@@ -216,6 +216,12 @@ void PollEvent(void) {
     
     if(!ctrl){
       expected_time = UINT64_MAX;
+      // clean the queue
+      while(!work_queue.empty()){
+        work_item_t *work = work_queue.front();
+        work_queue.pop_front();
+        delete work;
+      }
       return;
     }
   }
@@ -340,10 +346,10 @@ void ProcessWork(work_item_t *work){
           result_t[j] = result[i][0];
         }
         IssueDMAWrite(dma_addr_out[result[i][8]], result_t, 8, WRITE_OPAQUE(result[i][8])); // TODO
-        #ifdef DEBUG
-        fprintf(stderr, "DMA: IssueDMAWrite %d\n", result_t[0]);
-        #endif
       }
+    }
+    if(!work_queue.empty()){
+      expected_time = work_queue.front()->expected_time;
     }
     break;
   }
