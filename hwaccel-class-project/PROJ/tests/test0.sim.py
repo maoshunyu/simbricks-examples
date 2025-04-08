@@ -1,6 +1,3 @@
-# TEST 0: this is a functional test for the full stack with a block matrix
-# multiply but aggregation of the output matrix on the accelerator.
-
 import sys; sys.path.append('./tests/')
 import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.simulators as sim
@@ -10,11 +7,16 @@ from hwaccel_common import *
 experiments = []
 
 e = exp.Experiment(f'test0')
-e.checkpoint = True
+e.checkpoint = False
 
 server_config = HwAccelNode()
+server_config.cores = 8
+
+# NOT USED FOR GEM5!!
+# server_config.threads = 8
+
 server_config.app = AccelApp(8)
-# server_config.nockp = True
+server_config.nockp = True
 
 server = sim.Gem5Host(server_config)
 # server.pci_latency = 1

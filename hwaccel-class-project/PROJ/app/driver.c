@@ -33,6 +33,8 @@
 #include "../common/reg_defs.h"
 #include "driver.h"
 #include <string.h>
+#include <pthread.h>
+#define GNU_SOURCE
 
 /** Use this macro to safely access a register at a specific offset */
 #define ACCESS_REG(r) (*(volatile uint64_t *) ((uintptr_t) regs + r))
@@ -93,51 +95,103 @@ int accelerator_init(bool dma) {
 
 #include "utils.h"
 
-void accel(const uint8_t * restrict A,
-                   uint8_t * restrict out, size_t n) {
-
-  memcpy(dma_mem, A, n);
 
 
-  /////////////////////
-  for(int i = 0;i < 8;i++){
-    int off =  i * 32;
+static pthread_barrier_t barrier;
+
+// 线程参数结构体
+typedef struct {
+    int thread_id;
+    const uint8_t *A;
+    uint8_t *out;
+    size_t n;
+} thread_arg_t;
+
+// 线程处理函数
+void *thread_handler(void *arg) {
+    thread_arg_t *t_arg = (thread_arg_t *)arg;
+    int i = t_arg->thread_id;
+    size_t n = t_arg->n;
+    
+    // 计算偏移量
+    int off = i * 32;
+    
+    // 设置 DMA 地址和长度
     ACCESS_REG(REG_DMA_ADDR_IN + off) = dma_mem_phys;
-    ACCESS_REG(REG_DMA_ADDR_OUT + off) = dma_out_phys + i * 32;// 32Byte
+    ACCESS_REG(REG_DMA_ADDR_OUT + off) = dma_out_phys + i * 32; // 32Byte
     ACCESS_REG(REG_DMA_LEN + off) = n;
+    
+
     ACCESS_REG_BYTE(REG_DMA_CTRL_IN + off) = 1;
     while (ACCESS_REG_BYTE(REG_DMA_CTRL_IN + off))
-      ;
-  }
-  /////////////////////
-
-
-  uint64_t total_cycles = 0;
-  uint64_t start = rdtsc();
-
-
-  ACCESS_REG_BYTE(REG_CTRL) = 1;
-  while(ACCESS_REG_BYTE(REG_CTRL))
-    ;
-
-  /////////////////////
-  for(int i = 0;i < 8;i++){
-    int off =  i * 32;
+        ;
+    
+    // // 第一个同步点：等待所有线程完成 DMA 输入设置
+    // pthread_barrier_wait(&barrier);
+    
+    // 只让线程 0 触发处理并等待
+    if (i == 0) {
+        ACCESS_REG_BYTE(REG_CTRL) = 1;
+        while (ACCESS_REG_BYTE(REG_CTRL))
+            ;
+    }
+    
+    // 第二个同步点：等待处理完成
+    pthread_barrier_wait(&barrier);
+    
+    // 等待 DMA 输出完成
     while (!ACCESS_REG_BYTE(REG_DMA_CTRL_OUT + off))
-      ;
-  }
-  /////////////////////
+        ;
 
+    // 复制结果到对应的输出位置
+    memcpy(t_arg->out + off, dma_out + off, n);
+    
+    return NULL;
+}
 
-  total_cycles += rdtsc() - start;
-  
-
-  printf("Cycles per operation: %ld\n", total_cycles);
-  memcpy(out, dma_out, n*32);// TODO
-
-
-  // TODO 删掉
-  for(int i=0;i<8;i++){
-    fprintf(stderr, "out[%d] = %d\n", i, *(out + i*32));
-  }
+void accel(const uint8_t * restrict A,
+                      uint8_t * restrict out, size_t n) {
+    // 复制输入数据到 DMA 内存
+    memcpy(dma_mem, A, n);
+    ACCESS_REG(REG_TP_NUM) = 2;
+    
+    pthread_t threads[8];
+    thread_arg_t thread_args[8];
+    
+    // 初始化屏障，需要同步 8 个线程
+    pthread_barrier_init(&barrier, NULL, 8);
+    
+    uint64_t total_cycles = 0;
+    uint64_t start = rdtsc();
+    
+    // 创建线程
+    for (int i = 0; i < 8; i++) {
+        thread_args[i].thread_id = i;
+        thread_args[i].A = A;
+        thread_args[i].out = out;
+        thread_args[i].n = n;
+        
+        if (pthread_create(&threads[i], NULL, thread_handler, &thread_args[i]) != 0) {
+            fprintf(stderr, "Error creating thread %d\n", i);
+            // 处理错误
+            return;
+        }
+    }
+    
+    // 等待所有线程完成
+    for (int i = 0; i < 8; i++) {
+        pthread_join(threads[i], NULL);
+    }
+    
+    total_cycles += rdtsc() - start;
+    printf("Multi-thread cycles per operation: %ld\n", total_cycles);
+    
+    // 销毁屏障
+    pthread_barrier_destroy(&barrier);
+    
+    // 8x8输入
+    // 8x4输出
+    for (int i = 0; i < 8/2; i++) {
+        fprintf(stderr, "out[%d] = %d\n", i, *(out + i * 32));
+    }
 }

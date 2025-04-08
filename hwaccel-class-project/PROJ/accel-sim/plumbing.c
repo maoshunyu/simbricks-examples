@@ -67,8 +67,8 @@ static int ParseOptions(int argc, char *argv[]) {
         pcie_params.sync_interval = strtoull(argv[4], NULL, 0) * 1000ULL;
     if (argc >= 6)
         pcie_params.link_latency = strtoull(argv[5], NULL, 0) * 1000ULL;
-    // pcie_params.link_latency = 1000;
-    // pcie_params.sync_interval = 1000;
+    pcie_params.link_latency = 1000;
+    pcie_params.sync_interval = 1000;
     return 0;
 }
 

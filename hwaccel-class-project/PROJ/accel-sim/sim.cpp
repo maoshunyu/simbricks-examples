@@ -42,11 +42,13 @@ static uint8_t mem[9][8]; // 8x8再加一个状态位
 static uint8_t* states; // =mem[8]
 uint8_t ready_mem;
 static uint8_t issued;
-static uint8_t** result; //  TODO: TP切分
+static uint8_t** result;
 static uint8_t result_t[8];// transpose result
 uint64_t ready_cu; // 最多64个CU
 uint8_t** dispatched; // 每个CU的内存和状态
 uint8_t finished_nums; // 完成的任务数目
+uint8_t tp_num;
+uint8_t ep_tp;
 
 uint64_t OP_START;
 uint64_t OP_FIND_LINE;
@@ -89,12 +91,15 @@ int InitState(void) {
   finished_nums = 0;
   ready_mem = 0;
 
-  OP_START = 1000;
-  OP_FIND_LINE = 5000;
-  OP_DISPATCH = 5000;
-  OP_GET_RESULT = 10000;
-  OP_DMA = 1000;
-  OP_DONE = 1000;
+  OP_START = 5000;
+  OP_FIND_LINE = 25000;
+  OP_DISPATCH = 25000;
+  OP_GET_RESULT = 50000;
+  OP_DMA = 5000;
+  OP_DONE = 5000;
+
+  tp_num = 1;
+  ep_tp = 8 / tp_num;
 
   ctrl = 0;
 
@@ -128,7 +133,9 @@ void MMIORead(volatile struct SimbricksProtoPcieH2DRead *read)
       case REG_CTRL:
         src = &ctrl;
         break;
-
+      case REG_TP_NUM:
+        src = &tp_num;
+        break;
       case REG_OFF_IN: src = &OFF_IN; break;
       case REG_OFF_OUT: src = &OFF_OUT; break;
       default:
@@ -201,8 +208,16 @@ void MMIOWrite(volatile struct SimbricksProtoPcieH2DWrite *write)
     }else if(write->offset >= OFF_IN && write->offset < (OFF_IN + 8 * 8)){
       memcpy(mem[write->offset - OFF_IN], (const void *) write->data, write->len);
     }else {
+      switch (write->offset) {
+      case REG_TP_NUM:
+        tp_num = *(uint8_t *)write->data;
+        ep_tp = 8 / tp_num;
+        break;
+      default:
       fprintf(stderr, "MMIO Write: warning invalid MMIO write 0x%lx\n",
-          write->offset);
+        write->offset);
+      }
+
     }
   }
 }
@@ -216,12 +231,7 @@ void PollEvent(void) {
     
     if(!ctrl){
       expected_time = UINT64_MAX;
-      // clean the queue
-      while(!work_queue.empty()){
-        work_item_t *work = work_queue.front();
-        work_queue.pop_front();
-        delete work;
-      }
+      clean_states();
       return;
     }
   }
@@ -322,8 +332,10 @@ void ProcessWork(work_item_t *work){
       }
       result_cu &= ~(1 << i);
       ready_cu |= 1 << i; // 该CU变为可用
-      for(int j = 0; j < 8; j++){
-        result[i][0] += dispatched[i][j]; // TODO
+      for(int j = 0;j < ep_tp; j++){
+        for(int k = 0; k < tp_num; k++){
+          result[i][j] += dispatched[i][j * tp_num + k];
+        }
       }
       result[i][8] = dispatched[i][8];
       dispatched[i][8] = 0;
@@ -341,11 +353,11 @@ void ProcessWork(work_item_t *work){
     fprintf(stderr, "DMA: finished_cu = %b\n", finished_cu);
     #endif
     for(uint64_t i = 0; i < CU_NUM; i++){
-      if(finished_cu & (1 << i)){ //DMA到卡i
-        for(int j = 0; j < 8; j++){
-          result_t[j] = result[i][0];
+      if(finished_cu & (1 << i)){ 
+        for(int j = 0; j < ep_tp; j++){
+          result_t[j] = result[i][j];
         }
-        IssueDMAWrite(dma_addr_out[result[i][8]], result_t, 8, WRITE_OPAQUE(result[i][8])); // TODO
+        IssueDMAWrite(dma_addr_out[result[i][8]], result_t, ep_tp, WRITE_OPAQUE(result[i][8]));
       }
     }
     if(!work_queue.empty()){
@@ -393,7 +405,7 @@ void DMACompleteEvent(uint64_t opaque) {
       states[i] |= 1 << (opaque - 0x1000);
     }
   }else if(opaque >= 0x2000 && opaque < 0x3000){
-    dma_ctrl_out[opaque - 0x2000] = 1; //  TODO：归零
+    dma_ctrl_out[opaque - 0x2000] = 1;
     finished_nums++; // 完成的任务数目
     if(finished_nums == 8){
       work_item_t* new_work = new work_item_t;
@@ -408,4 +420,32 @@ void DMACompleteEvent(uint64_t opaque) {
   }
   if(!work_queue.empty())
     expected_time = work_queue.front()->expected_time;
+}
+
+//  TODO：归零
+void clean_states(){
+  for(int i = 0; i < 8; i++){
+    states[i] = 0;
+  }
+  ready_cu = UINT64_MAX;
+  finished_nums = 0;
+  issued = 0;
+  ready_mem = 0;
+  tp_num = 1;
+  for(uint64_t i = 0; i < CU_NUM; i++){
+    delete[] dispatched[i];
+  }
+  delete[] dispatched;
+  for(uint64_t i = 0; i < CU_NUM; i++){
+    delete[] result[i];
+  }
+  delete[] result;
+  while(!work_queue.empty()){
+    work_item_t *work = work_queue.front();
+    work_queue.pop_front();
+    delete work;
+  }
+  #ifdef DEBUG
+  fprintf(stderr, "clean_states\n");
+  #endif
 }

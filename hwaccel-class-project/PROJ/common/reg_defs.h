@@ -19,6 +19,7 @@
 // OUT在0x2000+:0x40
 #define REG_OFF_IN 0x10 // RO
 #define REG_OFF_OUT 0x20 // RO
+#define REG_TP_NUM 0x30 // RW
 
 
 /** Register holding requested length of the DMA operation in bytes */ // 8B

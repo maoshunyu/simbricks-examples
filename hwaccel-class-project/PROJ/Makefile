@@ -4,7 +4,7 @@ all: app/accel accel-sim/sim
 
 app/accel: app/accel.o app/driver.o ../common/vfio-pci.o \
 	../common/dma-alloc.o
-
+app/accel: LDLIBS+=-pthread
 accel-sim/sim: LDLIBS+=-L/simbricks/lib -lsimbricks
 accel-sim/sim: accel-sim/sim.o accel-sim/plumbing.o accel-sim/dma.o
 	g++ -o accel-sim/sim accel-sim/sim.o accel-sim/plumbing.o accel-sim/dma.o $(LDLIBS)

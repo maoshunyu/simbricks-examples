@@ -126,4 +126,6 @@ void ProcessWork(work_item_t *work);
 
 
 void AddWork(work_item_t *work);
+
+void clean_states();
 #endif  // ndef ACCEL_SIM_SIM_H_
