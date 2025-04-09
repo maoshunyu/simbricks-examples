@@ -52,23 +52,19 @@ static void PollPcie(void);
 static int ParseOptions(int argc, char *argv[]) {
     SimbricksPcieIfDefaultParams(&pcie_params);
 
-    if (argc < 7 && argc > 13) {
+    if (argc > 5) {
         fprintf(stderr,
-                "Usage: accel-sim PCI-SOCKET "
-                "SHM  [START-TICK] [SYNC-PERIOD] [PCI-LATENCY]\n");
+                "Usage: accel-sim PCI-SOCKET SHM"
+                "[SYNC-PERIOD] [PCI-LATENCY]\n");
         return EXIT_FAILURE;
     }
 
     pcie_params.sock_path = argv[1];
     shm_pool_path = argv[2];
     if (argc >= 4)
-        main_time = strtoull(argv[3], NULL, 0);
+        pcie_params.sync_interval = strtoull(argv[3], NULL, 0) * 1000ULL;
     if (argc >= 5)
-        pcie_params.sync_interval = strtoull(argv[4], NULL, 0) * 1000ULL;
-    if (argc >= 6)
-        pcie_params.link_latency = strtoull(argv[5], NULL, 0) * 1000ULL;
-    pcie_params.link_latency = 1000;
-    pcie_params.sync_interval = 1000;
+        pcie_params.link_latency = strtoull(argv[4], NULL, 0) * 1000ULL;
     return 0;
 }
 

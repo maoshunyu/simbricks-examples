@@ -18,3 +18,8 @@ ms5/app/matmul-accel
 ms5/hw_comb/sim
 ms5/hw_vec/sim
 ms5/hwresults/runs
+
+PROJ/app/accel
+PROJ/accel-sim/sim
+PROJ/test*.out
+PROJ/out/

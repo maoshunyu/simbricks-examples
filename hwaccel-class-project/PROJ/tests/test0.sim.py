@@ -7,20 +7,18 @@ from hwaccel_common import *
 experiments = []
 
 e = exp.Experiment(f'test0')
-e.checkpoint = False
+e.checkpoint = True
 
 server_config = HwAccelNode()
-server_config.cores = 8
+# server_config.cores = 8
 
 # NOT USED FOR GEM5!!
 # server_config.threads = 8
 
 server_config.app = AccelApp(8)
-server_config.nockp = True
+server_config.nockp = False
 
 server = sim.Gem5Host(server_config)
-# server.pci_latency = 1
-# server.sync_period = 1
 server.name = 'host'
 server.cpu_type = 'TimingSimpleCPU'
 server.cpu_freq = '1GHz'
@@ -30,6 +28,13 @@ server.cpu_freq = '1GHz'
 hwaccel = HWAccelSim()
 hwaccel.name = 'accel'
 hwaccel.sync = True
+
+server.pci_latency = 1
+server.sync_period = 1
+
+hwaccel.pci_latency = 1
+hwaccel.sync_interval = 1
+
 server.add_pcidev(hwaccel)
 
 e.add_pcidev(hwaccel)

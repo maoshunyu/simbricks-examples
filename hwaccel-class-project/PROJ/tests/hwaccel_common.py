@@ -48,12 +48,14 @@ class AccelApp(node.AppConfig):
 # Simulator component for our accelerator model
 class HWAccelSim(sim.PCIDevSim):
     sync = True
+    pci_latency = 500 # ns
+    sync_interval = 500
 
     def __init__(self):
         super().__init__()
 
 
     def run_cmd(self, env):
-        cmd = '%s%s %s %s' % \
-            (os.getcwd(), '/accel-sim/sim', env.dev_pci_path(self), env.dev_shm_path(self))
+        cmd = '%s%s %s %s %d %d' % \
+            (os.getcwd(), '/accel-sim/sim', env.dev_pci_path(self), env.dev_shm_path(self), self.pci_latency, self.sync_interval)
         return cmd
