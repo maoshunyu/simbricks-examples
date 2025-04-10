@@ -367,7 +367,7 @@ void ProcessWork(work_item_t *work){
   }
     case DONE:
     #ifdef DEBUG
-    fprintf(stderr, "DONE\n");
+    fprintf(stderr, "DONE  main=%ld\n", main_time);
     #endif
     ctrl = 0;
     break;

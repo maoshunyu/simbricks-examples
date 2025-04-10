@@ -184,7 +184,7 @@ void accel(const uint8_t * restrict A,
     }
     
     total_cycles += rdtsc() - start;
-    printf("Multi-thread cycles per operation: %ld\n", total_cycles);
+    printf("Cycles per operation: %ld\n", total_cycles);
     
     // 销毁屏障
     pthread_barrier_destroy(&barrier);

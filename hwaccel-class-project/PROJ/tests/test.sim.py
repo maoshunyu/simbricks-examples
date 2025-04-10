@@ -29,11 +29,11 @@ hwaccel = HWAccelSim()
 hwaccel.name = 'accel'
 hwaccel.sync = True
 
-server.pci_latency = 1
-server.sync_period = 1
+server.pci_latency = 100
+server.sync_period = 100
 
-hwaccel.pci_latency = 1
-hwaccel.sync_interval = 1
+hwaccel.pci_latency = 100
+hwaccel.sync_interval = 100
 
 server.add_pcidev(hwaccel)
 

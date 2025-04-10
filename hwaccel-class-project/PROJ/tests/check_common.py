@@ -18,12 +18,12 @@ def exception_thrown():
 def fail(msg):
   global tname
   global test_fn
-  print(f'FAILED {tname}:', msg, f' (inspect {test_fn})', file=sys.stderr)
+  print(f'\033[91m[FAILED]\033[0m {tname}:', msg, f' (inspect {test_fn})', file=sys.stderr)
   sys.exit(1)
 
 def success():
   global tname
-  print(f'SUCCESS {tname}')
+  print(f'\033[92m[SUCCESS]\033[0m {tname}')
   sys.exit(0)
 
 def find_line(out, pattern):
