@@ -358,6 +358,9 @@ void ProcessWork(work_item_t *work){
           result_t[j] = result[i][j];
         }
         IssueDMAWrite(dma_addr_out[result[i][8]], result_t, ep_tp, WRITE_OPAQUE(result[i][8]));
+        for(int j = 0; j < ep_tp; j++){
+          result[i][j] = 0;
+        }
       }
     }
     if(!work_queue.empty()){
