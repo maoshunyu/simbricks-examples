@@ -126,8 +126,8 @@ void *thread_handler(void *arg) {
     while (ACCESS_REG_BYTE(REG_DMA_CTRL_IN + off))
         ;
     
-    // // 第一个同步点：等待所有线程完成 DMA 输入设置
-    // pthread_barrier_wait(&barrier);
+    // TODO: BUG: 某个线程（一般1号）偶尔无法启动/启动极慢
+    pthread_barrier_wait(&barrier);
     
     // 只让线程 0 触发处理并等待
     if (i == 0) {
@@ -191,7 +191,7 @@ void accel(const uint8_t * restrict A,
     
     // 8x8输入
     // 8x4输出
-    for (int i = 0; i < 8/2; i++) {
+    for (int i = 0; i < 8; i++) {
         fprintf(stderr, "out[%d] = %d\n", i, *(out + i * 32));
     }
 }

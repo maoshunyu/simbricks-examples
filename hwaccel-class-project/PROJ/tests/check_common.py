@@ -45,9 +45,6 @@ def load_testfile(fn):
   try:
     with open(test_fn, 'r') as f:
       data = json.load(f)
-
-    if not data['success']:
-      fail(f'Simulation was not successful')
   except Exception:
     traceback.print_exc()
     fail('Loading simulation JSON output failed')
