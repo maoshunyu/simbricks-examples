@@ -91,12 +91,13 @@ int InitState(void) {
   finished_nums = 0;
   ready_mem = 0;
 
-  OP_START = 5000;
-  OP_FIND_LINE = 25000;
-  OP_DISPATCH = 25000;
-  OP_GET_RESULT = 50000;
-  OP_DMA = 5000;
-  OP_DONE = 5000;
+  // 1cycle = 5000 = 5ns
+  OP_START = 5000;//Size/BW + 5ns  8MB/64GBps = 125us
+  OP_FIND_LINE = 40000;// 8 Cycles
+  OP_DISPATCH = 20000;// 4 Cycles
+  OP_GET_RESULT = 200000;// 13 * 3 Cycles
+  OP_DMA = 5000; // Size/BW + 5ns
+  OP_DONE = 1000;
 
   tp_num = 1;
   ep_tp = 8 / tp_num;
