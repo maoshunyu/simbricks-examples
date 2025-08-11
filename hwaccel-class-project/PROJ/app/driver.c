@@ -49,7 +49,7 @@ static uintptr_t dma_mem_phys;
 
 static uint8_t *dma_out;
 static uintptr_t dma_out_phys;
-static size_t dma_out_size = 8 * 32;
+static size_t dma_out_size = 32 * 32; // 扩大为支持32个GPU
 
 int accelerator_init(bool dma) {
   struct vfio_dev dev;
@@ -88,14 +88,10 @@ int accelerator_init(bool dma) {
     }
   }
 
-  // FILL ME IN
-
   return 0;
 }
 
 #include "utils.h"
-
-
 
 static pthread_barrier_t barrier;
 
@@ -105,6 +101,8 @@ typedef struct {
     const uint8_t *A;
     uint8_t *out;
     size_t n;
+    int tp_group_size;
+    bool use_multi_layer;
 } thread_arg_t;
 
 // 线程处理函数
@@ -112,6 +110,8 @@ void *thread_handler(void *arg) {
     thread_arg_t *t_arg = (thread_arg_t *)arg;
     int i = t_arg->thread_id;
     size_t n = t_arg->n;
+    // int tp_group_size = t_arg->tp_group_size;
+    bool use_multi_layer = t_arg->use_multi_layer;
     
     // 计算偏移量
     int off = i * 32;
@@ -126,12 +126,17 @@ void *thread_handler(void *arg) {
     while (ACCESS_REG_BYTE(REG_DMA_CTRL_IN + off))
         ;
     
-    // TODO: BUG: 某个线程（一般1号）偶尔无法启动/启动极慢
     pthread_barrier_wait(&barrier);
     
-    // 只让线程 0 触发处理并等待
+    // 只让第一个线程触发处理
     if (i == 0) {
+        if (use_multi_layer) {
+            ACCESS_REG_BYTE(REG_MULTI_LAYER) = 1;
+        }
+        
         ACCESS_REG_BYTE(REG_CTRL) = 1;
+        
+        // 等待第一层处理完成
         while (ACCESS_REG_BYTE(REG_CTRL))
             ;
     }
@@ -150,26 +155,39 @@ void *thread_handler(void *arg) {
 }
 
 void accel(const uint8_t * restrict A,
-                      uint8_t * restrict out, size_t n) {
+          uint8_t * restrict out, size_t n) {
     // 复制输入数据到 DMA 内存
+    // TODO
     memcpy(dma_mem, A, n);
-    ACCESS_REG(REG_TP_NUM) = 2;
     
-    pthread_t threads[8];
-    thread_arg_t thread_args[8];
+    // 设置TP组大小，这里我们使用2，每个TP组有2个GPU
+    int tp_group_size = 2;
+    ACCESS_REG_BYTE(REG_TP_NUM) = tp_group_size;
+    ACCESS_REG_BYTE(REG_EP_NUM) = n / tp_group_size;
     
-    // 初始化屏障，需要同步 8 个线程
-    pthread_barrier_init(&barrier, NULL, 8);
+    // 使用多层模式
+    bool use_multi_layer = true;
+    
+    pthread_t* threads;
+    thread_arg_t* thread_args;
+
+    threads = (pthread_t*)malloc(n * sizeof(pthread_t));
+    thread_args = (thread_arg_t*)malloc(n * sizeof(thread_arg_t));
+    
+    // 初始化屏障，需要同步所有线程
+    pthread_barrier_init(&barrier, NULL, n);
     
     uint64_t total_cycles = 0;
     uint64_t start = rdtsc();
     
     // 创建线程
-    for (int i = 0; i < 8; i++) {
+    for (size_t i = 0; i < n; i++) {
         thread_args[i].thread_id = i;
         thread_args[i].A = A;
         thread_args[i].out = out;
         thread_args[i].n = n;
+        thread_args[i].tp_group_size = tp_group_size;
+        thread_args[i].use_multi_layer = use_multi_layer;
         
         if (pthread_create(&threads[i], NULL, thread_handler, &thread_args[i]) != 0) {
             fprintf(stderr, "Error creating thread %d\n", i);
@@ -179,7 +197,7 @@ void accel(const uint8_t * restrict A,
     }
     
     // 等待所有线程完成
-    for (int i = 0; i < 8; i++) {
+    for (size_t i = 0; i < n; i++) {
         pthread_join(threads[i], NULL);
     }
     
@@ -188,10 +206,12 @@ void accel(const uint8_t * restrict A,
     
     // 销毁屏障
     pthread_barrier_destroy(&barrier);
+
+    free(threads);
+    free(thread_args);
     
-    // 8x8输入
-    // 8x4输出
-    for (int i = 0; i < 8; i++) {
+    // 打印部分结果
+    for (size_t i = 0; i < n; i += 4) {
         fprintf(stderr, "out[%d] = %d\n", i, *(out + i * 32));
     }
 }

@@ -15,14 +15,17 @@ server_config = HwAccelNode()
 # NOT USED FOR GEM5!!
 # server_config.threads = 8
 
-server_config.app = AccelApp(8)
+server_config.app = AccelApp(32)  # 使用32个线程的应用
 server_config.nockp = False
 
 server = sim.Gem5Host(server_config)
 server.name = 'host'
 server.cpu_type = 'TimingSimpleCPU'
 server.cpu_freq = '1GHz'
-#server.variant = 'opt'
+
+
+# DEBUG
+# server.variant = 'opt'
 # server.extra_main_args = ['--debug-flags=SimBricksPci,DMA']
 
 hwaccel = HWAccelSim()

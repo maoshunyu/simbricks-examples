@@ -34,14 +34,18 @@
 
 #define READ_OPAQUE(x) (0x1000 + (x))
 #define WRITE_OPAQUE(x) (0x2000 + (x))
-
+// 新增：第二层读写操作的标识
+#define READ_LAYER2_OPAQUE(x) (0x3000 + (x))
+#define WRITE_LAYER2_OPAQUE(x) (0x4000 + (x))
 
 typedef enum {
   FIND_LINE,
   DISPATCH,
   GET_RESULT,
   DMA,
-  DONE
+  DONE,
+  LAYER2_ALLTOALL, // 第二层交换机执行alltoall
+  LAYER2_BROADCAST // 第二层交换机广播结果
 } work_t;
   
 typedef struct {
@@ -124,8 +128,11 @@ void DMACompleteEvent(uint64_t opaque);
 
 void ProcessWork(work_item_t *work);
 
-
 void AddWork(work_item_t *work);
 
 void clean_states();
+
+// 新增函数：处理第二层交换机逻辑
+void ProcessLayer2Operation(work_item_t *work);
+
 #endif  // ndef ACCEL_SIM_SIM_H_

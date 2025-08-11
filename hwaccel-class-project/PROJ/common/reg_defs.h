@@ -21,6 +21,12 @@
 #define REG_OFF_OUT 0x20 // RO
 #define REG_TP_NUM 0x30 // RW
 
+// 新增寄存器
+#define REG_EP_NUM 0x34 // RW
+// 新增寄存器：是否启用第二层交换机（多层模式）
+#define REG_MULTI_LAYER 0x38 // RW
+
+
 
 /** Register holding requested length of the DMA operation in bytes */ // 8B
 #define REG_DMA_LEN  0x40 // RW
@@ -34,8 +40,5 @@
 // 2B
 #define REG_DMA_CTRL_OUT 0x5A // RO
 
-
-
 // 每个卡28B，留空到32B
-// 0x40-0x60 0x60-0x80 0x80-0xA0 0xA0-0xC0 0xC0-0xE0 0xE0-0x100 0x100-0x120 0x120-0x140
-// 最大到0x140
+// Up to 32B * 128 = 0x1000 +0x40
