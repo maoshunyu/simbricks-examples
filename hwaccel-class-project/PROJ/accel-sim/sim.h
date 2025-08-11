@@ -47,7 +47,7 @@ typedef enum {
   LAYER2_ALLTOALL, // 第二层交换机执行alltoall
   LAYER2_BROADCAST // 第二层交换机广播结果
 } work_t;
-  
+
 typedef struct {
   uint64_t expected_time;
   work_t type;
@@ -70,7 +70,6 @@ volatile union SimbricksProtoPcieD2H *AllocPcieOut(void);
  */
 void SendPcieOut(volatile union SimbricksProtoPcieD2H *msg, uint64_t type);
 
-
 /**
  * Issue a DMA Read operation (read data from host memory).
  * @param dst      Destination pointer in the simulator
@@ -90,8 +89,7 @@ void IssueDMARead(void *dst, uint64_t src_addr, size_t len, uint64_t opaque);
  *                 completion.
  */
 void IssueDMAWrite(uint64_t dst_addr, const void *src, size_t len,
-    uint64_t opaque);
-
+                   uint64_t opaque);
 
 /******************************************************************************/
 /* Functions you will implement in sim.c */
@@ -99,18 +97,18 @@ void IssueDMAWrite(uint64_t dst_addr, const void *src, size_t len,
 /**
  * Called once during initialization. Use this to initialize your internal
  * simulation model state.
-*/
+ */
 int InitState(void);
 
 /**
  * Called for every register read. You must complete each operation with a
  * corresponding read completion sent with SendPcieOut.
-*/
+ */
 void MMIORead(volatile struct SimbricksProtoPcieH2DRead *read);
 
 /**
  * Called for every register write. No completion message needed.
-*/
+ */
 void MMIOWrite(volatile struct SimbricksProtoPcieH2DWrite *write);
 
 /** Called by simulation loop to enable you to process potentially pending
@@ -135,4 +133,4 @@ void clean_states();
 // 新增函数：处理第二层交换机逻辑
 void ProcessLayer2Operation(work_item_t *work);
 
-#endif  // ndef ACCEL_SIM_SIM_H_
+#endif // ndef ACCEL_SIM_SIM_H_

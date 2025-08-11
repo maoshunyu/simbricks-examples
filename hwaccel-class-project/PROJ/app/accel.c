@@ -44,8 +44,8 @@ uint8_t *zero_matrix_alloc(size_t m, size_t n) {
 }
 
 /* software implementaiton for reference */
-void matmult(const uint8_t * restrict inA, const uint8_t * restrict inB,
-    uint8_t * restrict out, size_t n) {
+void matmult(const uint8_t *restrict inA, const uint8_t *restrict inB,
+             uint8_t *restrict out, size_t n) {
   size_t i, j, k;
   for (i = 0; i < n; i++) {
     for (j = 0; j < n; j++) {
@@ -57,28 +57,20 @@ void matmult(const uint8_t * restrict inA, const uint8_t * restrict inB,
   }
 }
 
-void test_connection(void)
-{
+void test_connection(void) {}
 
-}
-
-void test_functionality(size_t n)
-{
+void test_functionality(size_t n) {
   uint8_t *A = malloc(n);
-  uint8_t *out = malloc(n*32); // TODO
+  uint8_t *out = malloc(n * 32); // TODO
   for (size_t i = 0; i < n; i++) {
     A[i] = i;
   }
-  accel(A,out,n);
+  accel(A, out, n);
 }
 
-void measure(size_t n, size_t iterations)
-{
-  
-}
+void measure(size_t n, size_t iterations) {}
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   bool dma = strtoull(argv[1], NULL, 10);
   if (accelerator_init(dma))
     return -1;

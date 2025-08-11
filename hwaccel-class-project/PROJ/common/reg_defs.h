@@ -5,7 +5,6 @@
    YOU ARE WELCOME TO CHANGE THIS HOWEVER YOU LIKE!
 */
 
-
 /** Control register: used to start the accelerator/wait for completion.
     read/write */
 #define REG_CTRL 0x00 // RW
@@ -17,21 +16,19 @@
 
 // IN在0x1000+:0x48
 // OUT在0x2000+:0x40
-#define REG_OFF_IN 0x10 // RO
+#define REG_OFF_IN 0x10  // RO
 #define REG_OFF_OUT 0x20 // RO
-#define REG_TP_NUM 0x30 // RW
+#define REG_TP_NUM 0x30  // RW
 
 // 新增寄存器
 #define REG_EP_NUM 0x34 // RW
 // 新增寄存器：是否启用第二层交换机（多层模式）
 #define REG_MULTI_LAYER 0x38 // RW
 
-
-
 /** Register holding requested length of the DMA operation in bytes */ // 8B
-#define REG_DMA_LEN  0x40 // RW
-/** Register holding *physical* address on the host. */ // 8B
-#define REG_DMA_ADDR_IN 0x48 // RW
+#define REG_DMA_LEN 0x40                                               // RW
+/** Register holding *physical* address on the host. */                // 8B
+#define REG_DMA_ADDR_IN 0x48                                           // RW
 // 8B
 #define REG_DMA_ADDR_OUT 0x50 // RW
 
