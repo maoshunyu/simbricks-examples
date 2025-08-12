@@ -109,16 +109,25 @@ int InitState(void) {
     memset(layer2_data[i], 0, MAX_GPUS);
   }
 
-  // 1cycle = 5000 = 5ns
-  OP_START = 5000;        // Size/BW + 5ns  8MB/64GBps = 125us
-  OP_FIND_LINE = 40000;   // 8 Cycles
-  OP_DISPATCH = 20000;    // 4 Cycles
-  OP_GET_RESULT = 200000; // 13 * 3 Cycles
-  OP_DMA = 5000;          // Size/BW + 5ns
-  OP_DONE = 1000;
+  // 1cycle = 1000 = 1ns
+  OP_START = 1000;      // 1 Cycle
+  OP_FIND_LINE = 16000; // 16 Cycles
+  OP_DISPATCH = 8000;   // 8 Cycles
+  OP_DONE = 750000;     // 750ns
 
-  OP_LAYER2_ALLTOALL = 100000; // 执行alltoall延迟
-  OP_LAYER2_BROADCAST = 80000; // 广播结果延迟
+  /*
+    下面的参数和Size有关
+  */
+  uint64_t total_size = 524288;
+  uint64_t baseline_bw = 38; // GB/s
+
+  OP_GET_RESULT = total_size / 8 / 512 * 2 *
+                  1000; // Size per GPU / 512 * (2 if cu==4); xlsx C29
+  OP_DMA = total_size / baseline_bw * 1000; // 一层的DMA & 二层的alltoall延迟
+  OP_LAYER2_ALLTOALL = 750000;              // 750ns
+  OP_LAYER2_BROADCAST = total_size / 64 * 1000; // 二层的DMA延迟
+
+  /**/
 
   tp_num = 1;
   ep_num = MAX_GPUS;
@@ -481,10 +490,9 @@ void ProcessWork(work_item_t *work) {
           }
         }
       }
-    }
-
-    if (!work_queue.empty()) {
-      expected_time = work_queue.front()->expected_time;
+      if (!work_queue.empty()) {
+        expected_time = work_queue.front()->expected_time;
+      }
     }
     break;
   }
@@ -554,12 +562,9 @@ void ProcessLayer2Operation(work_item_t *work) {
       // 写回结果
       IssueDMAWrite(dma_addr_out[i], out_data, ep_num, WRITE_LAYER2_OPAQUE(i));
     }
-
-    // 触发完成事件
-    new_work = new work_item_t;
-    new_work->type = DONE;
-    new_work->expected_time = main_time + OP_DONE;
-    AddWork(new_work);
+    if (!work_queue.empty()) {
+      expected_time = work_queue.front()->expected_time;
+    }
     break;
   }
 

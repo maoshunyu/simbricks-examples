@@ -142,9 +142,9 @@ void *thread_handler(void *arg) {
   // 第二个同步点：等待处理完成
   pthread_barrier_wait(&barrier);
 
-  // 等待 DMA 输出完成
-  while (!ACCESS_REG_BYTE(REG_DMA_CTRL_OUT + off))
-    ;
+  // // 等待 DMA 输出完成
+  // while (!ACCESS_REG_BYTE(REG_DMA_CTRL_OUT + off))
+  //   ;
 
   // 复制结果到对应的输出位置
   memcpy(t_arg->out + off, dma_out + off, n);
@@ -158,7 +158,7 @@ void accel(const uint8_t *restrict A, uint8_t *restrict out, size_t n) {
   memcpy(dma_mem, A, n);
 
   // 设置TP组大小，这里我们使用2，每个TP组有2个GPU
-  int tp_group_size = 2;
+  int tp_group_size = 4;
   ACCESS_REG_BYTE(REG_TP_NUM) = tp_group_size;
   ACCESS_REG_BYTE(REG_EP_NUM) = n / tp_group_size;
 
@@ -188,7 +188,7 @@ void accel(const uint8_t *restrict A, uint8_t *restrict out, size_t n) {
 
     if (pthread_create(&threads[i], NULL, thread_handler, &thread_args[i]) !=
         0) {
-      fprintf(stderr, "Error creating thread %d\n", i);
+      fprintf(stderr, "Error creating thread %ld\n", i);
       // 处理错误
       return;
     }
@@ -208,8 +208,10 @@ void accel(const uint8_t *restrict A, uint8_t *restrict out, size_t n) {
   free(threads);
   free(thread_args);
 
-  // 打印部分结果
-  for (size_t i = 0; i < n; i += 4) {
-    fprintf(stderr, "out[%d] = %d\n", i, *(out + i * 32));
-  }
+
+  // for (size_t i = 0; i < n; i++) {
+  //   for (size_t j = 0; j < n; j++) {
+  //     fprintf(stderr, "GPU[%ld][%ld] = %d\n", i, j, *(out + i * 32 + j));
+  //   }
+  // }
 }
